@@ -3,6 +3,13 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 import time
+from datetime import datetime, timedelta
+import requests
+from dotenv import load_dotenv
+import os
+
+# load .env
+load_dotenv()
 
 # 옵션 설정
 options = Options()
@@ -12,20 +19,16 @@ options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) Apple
 options.add_experimental_option("excludeSwitches", ["enable-automation"])
 options.add_experimental_option('useAutomationExtension', False)
 
-# 사용자 입력을 받습니다.
-question = input("Please enter your question:")
-content = input("Please enter your content:")
-
 # 크롬 드라이버 서비스 설정
-service = Service()
+service = Service('/home/pori/chromedriver-linux64/chromedriver')
 browser = webdriver.Chrome(service=service, options=options)
 
-post_url = ''
+post_url = os.environ.get('post_url')
 browser.get(post_url)
 
 # 로그인 폼 입력
-username = ''  # 사용자 이름 입력
-password = ''  # 비밀번호 입력
+username = os.environ.get('username')  # 사용자 이름 입력
+password = os.environ.get('password')  # 비밀번호 입력
 
 # 사용자 이름 입력
 username_field = browser.find_element(By.ID, 'user_login')
@@ -41,9 +44,83 @@ password_field.send_keys(password)
 login_button = browser.find_element(By.ID, 'wp-submit')
 login_button.click()
 
+# 현재 날짜 및 시간을 가져옵니다.
+now = datetime.now()
+date_string = now.strftime("%Y-%m-%d")  # 날짜를 YYYY-MM-DD 형식의 문자열로 변환합니다.
+
+# API 키
+api_key = os.environ.get('api_key')
+
+# 도시 목록
+cities = {'Seoul': '서울'}
+
+# 영어 설명과 한글 설명 매핑
+weather_desc_mapping = {
+    'Thunderstorm': '천둥번개',
+    'Drizzle': '이슬비',
+    'Rain': '비',
+    'Snow': '눈',
+    'Clear': '맑음',
+    'Clouds': '구름',
+    'Mist': '안개',
+    'Smoke': '연기',
+    'Haze': '안개',
+    'Dust': '먼지',
+    'Fog': '안개',
+    'Sand': '모래',
+    'Dust': '먼지',
+    'Ash': '재',
+    'Squall': '돌풍',
+    'Tornado': '토네이도'
+}
+
+# 현재 시간
+current_time = datetime.now()
+
+# 오늘 날짜의 시작 시각
+start_of_today = current_time.replace(hour=0, minute=0, second=0, microsecond=0)
+
+# 현재 시간부터 오늘 자정까지의 시간 리스트 생성 (3시간 간격)
+forecast_times = [start_of_today + timedelta(hours=i) for i in range(0, 24, 3)]
+
+# 현재 시간부터 오늘 자정까지의 시간 문자열 리스트 생성
+forecast_time_strings = [time.strftime("%Y-%m-%d %H:%M:%S") for time in forecast_times]
+
+# 현재 시간별 날씨 정보를 가져와 출력
+for city, korean_city in cities.items():
+    # API 엔드포인트 URL
+    url = f'http://api.openweathermap.org/data/2.5/forecast?q={city}&appid={api_key}&units=metric'
+
+    # API에 요청을 보냄
+    response = requests.get(url)
+
+    # 응답 데이터를 JSON 형식으로 파싱
+    data = response.json()
+
+    # 날씨 정보 출력
+    if data['cod'] == '200':
+        city_title = (f"{korean_city} 날씨:")
+        for forecast in data['list']:
+            dt_txt = forecast['dt_txt']  # 시간대 정보
+            if dt_txt in forecast_time_strings:
+                weather_desc = forecast['weather'][0]['main']  # 날씨 설명
+                temp = forecast['main']['temp']  # 온도
+                humidity = forecast['main']['humidity']  # 습도
+
+                # 한글로 변환된 날씨 설명 출력
+                korean_weather_desc = weather_desc_mapping.get(weather_desc, weather_desc)
+
+                # 시간대, 날씨 설명, 온도, 습도 출력
+                weather = (f" {dt_txt}, 날씨: {korean_weather_desc}, 온도: {temp} °C, 습도: {humidity}%")
+    else:
+        city_title = (f"{korean_city} 날씨 정보를 가져오지 못했습니다.")
+
+title = (date_string)
+content = (city_title + weather)
+
 # 게시글 제목과 내용 입력
 time.sleep(1)  # 페이지 로딩 대기
-browser.find_element(By.CLASS_NAME, 'wp-block').send_keys(question) 
+browser.find_element(By.CLASS_NAME, 'wp-block').send_keys(title) 
 time.sleep(1)
 browser.find_element(By.CLASS_NAME, 'block-editor-default-block-appender__content').send_keys(content)  # 내용 입력
 
@@ -51,10 +128,11 @@ browser.find_element(By.CLASS_NAME, 'block-editor-default-block-appender__conten
 time.sleep(2)  # 입력 지연
 publish_button = browser.find_element(By.CLASS_NAME, 'editor-post-publish-panel__toggle')
 browser.execute_script("arguments[0].scrollIntoView(true);", publish_button)  # 발행 버튼으로 스크롤
-publish_button.click()
-time.sleep(1)
-publish_button = browser.find_element(By.CLASS_NAME, 'editor-post-publish-button')
-publish_button.click()
+
+# publish_button.click()
+# time.sleep(1)
+# publish_button = browser.find_element(By.CLASS_NAME, 'editor-post-publish-button')
+# publish_button.click()
 
 # 웹 페이지가 열려 있는 동안 확인 가능
 input("Press Enter to exit...")  # 사용자가 엔터를 누를 때까지 대기
