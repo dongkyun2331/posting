@@ -101,7 +101,7 @@ for city, korean_city in cities.items():
 
     # 날씨 정보 출력
     if data['cod'] == '200':
-        city_title = (f"{korean_city} 날씨:")
+        city_title = (f"{korean_city} 날씨:\n")
         for forecast in data['list']:
             dt_txt = forecast['dt_txt']  # 시간대 정보
             if dt_txt in forecast_time_strings:
@@ -124,7 +124,7 @@ def get_crypto_news(news_api_key):
 
     # 요청 파라미터 설정
     params = {
-        "q": "블록체인 OR 크립토 OR 비트코인 OR 코인",  # 키워드 검색
+        "q": "블록체인 OR 크립토 OR 비트코인 OR 코인 OR 알트코인 OR 이더리움 OR 바이낸스 OR 업비트",  # 키워드 검색
         "apiKey": news_api_key  # News API 액세스 키
     }
 
@@ -171,23 +171,26 @@ def fetch_crypto_data():
 top_crypto_data = fetch_crypto_data()
 
 # 게시글 제목과 내용 입력
-title = (date_string + "날씨정보 블록체인 뉴스")
-content = crypto_news + top_crypto_data + weather_info
+title = (date_string + " / 블록체인 관련 뉴스 / 시가총액 상위 10개 코인 정보 / 서울 날씨")
+content = crypto_news + top_crypto_data + city_title + weather_info
 
 time.sleep(1)  # 페이지 로딩 대기
 browser.find_element(By.CLASS_NAME, 'wp-block').send_keys(title) 
 time.sleep(1)
 browser.find_element(By.CLASS_NAME, 'block-editor-default-block-appender__content').send_keys(content)  # 내용 입력
 
+print(title)
+print(content)
+
 # 게시글 발행
 time.sleep(2)  # 입력 지연
 publish_button = browser.find_element(By.CLASS_NAME, 'editor-post-publish-panel__toggle')
 browser.execute_script("arguments[0].scrollIntoView(true);", publish_button)  # 발행 버튼으로 스크롤
 
-# publish_button.click()
-# time.sleep(1)
-# publish_button = browser.find_element(By.CLASS_NAME, 'editor-post-publish-button')
-# publish_button.click()
+publish_button.click()
+time.sleep(1)
+publish_button = browser.find_element(By.CLASS_NAME, 'editor-post-publish-button')
+publish_button.click()
 
 # 웹 페이지가 열려 있는 동안 확인 가능
 input("Press Enter to exit...")  # 사용자가 엔터를 누를 때까지 대기 
