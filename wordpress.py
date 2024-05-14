@@ -5,8 +5,10 @@ from selenium.webdriver.common.by import By
 import time
 from datetime import datetime, timedelta
 import requests
-from dotenv import load_dotenv
+from PIL import Image
+from io import BytesIO
 import os
+from dotenv import load_dotenv
 
 # load .env
 load_dotenv()
@@ -49,7 +51,8 @@ now = datetime.now()
 date_string = now.strftime("%Y-%m-%d")  # 날짜를 YYYY-MM-DD 형식의 문자열로 변환합니다.
 
 # API 키
-api_key = os.environ.get('api_key')
+weather_api_key = os.environ.get('weather_api_key')
+news_api_key = os.environ.get('news_api_key')
 
 # 도시 목록
 cities = {'Seoul': '서울'}
@@ -87,12 +90,13 @@ forecast_times = [start_of_today + timedelta(hours=i) for i in range(0, 24, 3)]
 forecast_time_strings = [time.strftime("%Y-%m-%d %H:%M:%S") for time in forecast_times]
 
 # 현재 시간별 날씨 정보를 가져와 출력
+weather_info = ""
 for city, korean_city in cities.items():
     # API 엔드포인트 URL
-    url = f'http://api.openweathermap.org/data/2.5/forecast?q={city}&appid={api_key}&units=metric'
+    weather_url = f'http://api.openweathermap.org/data/2.5/forecast?q={city}&appid={weather_api_key}&units=metric'
 
     # API에 요청을 보냄
-    response = requests.get(url)
+    response = requests.get(weather_url)
 
     # 응답 데이터를 JSON 형식으로 파싱
     data = response.json()
@@ -111,14 +115,46 @@ for city, korean_city in cities.items():
                 korean_weather_desc = weather_desc_mapping.get(weather_desc, weather_desc)
 
                 # 시간대, 날씨 설명, 온도, 습도 출력
-                weather = (f" {dt_txt}, 날씨: {korean_weather_desc}, 온도: {temp} °C, 습도: {humidity}%")
+                weather_info += f" {dt_txt}, 날씨: {korean_weather_desc}, 온도: {temp} °C, 습도: {humidity}%\n"
     else:
         city_title = (f"{korean_city} 날씨 정보를 가져오지 못했습니다.")
 
-title = (date_string)
-content = (city_title + weather)
+# 블록체인, 크립토, 비트코인 관련 뉴스 가져오기
+def get_crypto_news(news_api_key):
+    # News API의 키워드 검색 엔드포인트 URL
+    news_url = f"https://newsapi.org/v2/everything"
+
+    # 요청 파라미터 설정
+    params = {
+        "q": "블록체인 OR 크립토 OR 비트코인",  # 키워드 검색: 블록체인, 크립토, 비트코인
+        "apiKey": news_api_key  # News API 액세스 키
+    }
+
+    # API 요청 보내기
+    response = requests.get(news_url, params=params)
+
+    # 응답 데이터를 JSON 형식으로 파싱
+    data = response.json()
+
+    # 뉴스 정보 출력
+    if response.status_code == 200:
+        articles = data.get("articles", [])
+        news_info = "블록체인, 크립토, 비트코인 관련 뉴스:\n"
+        for article in articles[:10]:
+            news_info += f"제목: {article['title']}\n"
+            news_info += f"{article['description']}\n"
+        
+        return news_info
+    else:
+        return "블록체인, 크립토, 비트코인 관련 뉴스를 가져오지 못했습니다."
+
+print("블록체인, 크립토, 비트코인 관련 뉴스 가져오기 시작...")
+crypto_news = get_crypto_news(news_api_key)
 
 # 게시글 제목과 내용 입력
+title = (date_string + " 블록체인, 크립토, 비트코인 뉴스")
+content = weather_info + crypto_news
+
 time.sleep(1)  # 페이지 로딩 대기
 browser.find_element(By.CLASS_NAME, 'wp-block').send_keys(title) 
 time.sleep(1)
@@ -135,4 +171,4 @@ browser.execute_script("arguments[0].scrollIntoView(true);", publish_button)  # 
 # publish_button.click()
 
 # 웹 페이지가 열려 있는 동안 확인 가능
-input("Press Enter to exit...")  # 사용자가 엔터를 누를 때까지 대기
+input("Press Enter to exit...")  # 사용자가 엔터를 누를 때까지 대기 
