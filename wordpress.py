@@ -5,8 +5,6 @@ from selenium.webdriver.common.by import By
 import time
 from datetime import datetime, timedelta
 import requests
-from PIL import Image
-from io import BytesIO
 import os
 from dotenv import load_dotenv
 
@@ -126,7 +124,7 @@ def get_crypto_news(news_api_key):
 
     # 요청 파라미터 설정
     params = {
-        "q": "블록체인 OR 크립토 OR 비트코인",  # 키워드 검색: 블록체인, 크립토, 비트코인
+        "q": "블록체인 OR 크립토 OR 비트코인 OR 코인",  # 키워드 검색
         "apiKey": news_api_key  # News API 액세스 키
     }
 
@@ -139,21 +137,42 @@ def get_crypto_news(news_api_key):
     # 뉴스 정보 출력
     if response.status_code == 200:
         articles = data.get("articles", [])
-        news_info = "블록체인, 크립토, 비트코인 관련 뉴스:\n"
+        news_info = "블록체인 관련 뉴스:\n"
         for article in articles[:10]:
             news_info += f"제목: {article['title']}\n"
             news_info += f"{article['description']}\n"
         
         return news_info
     else:
-        return "블록체인, 크립토, 비트코인 관련 뉴스를 가져오지 못했습니다."
+        return "블록체인 관련 뉴스를 가져오지 못했습니다."
 
-print("블록체인, 크립토, 비트코인 관련 뉴스 가져오기 시작...")
+print("블록체인 관련 뉴스 가져오기 시작...")
 crypto_news = get_crypto_news(news_api_key)
 
+# 상위 10개 암호화폐를 가져오는 함수
+def fetch_crypto_data():
+    url = "https://api.coingecko.com/api/v3/coins/markets"
+    params = {
+        "vs_currency": "usd",
+        "order": "market_cap_desc",
+        "per_page": 10,
+        "page": 1,
+        "sparkline": False
+    }
+    response = requests.get(url, params=params)
+    data = response.json()
+    
+    crypto_info = "시가총액 상위 10개 코인 정보:\n"
+    for coin in data:
+        crypto_info += f"{coin['name']} (기호: {coin['symbol'].upper()}): 시가총액: ${coin['market_cap']:,.0f}, 가격: ${coin['current_price']:,.2f}, 24시간 변동률: {coin['price_change_percentage_24h']:.2f}%\n"
+    return crypto_info
+
+# 함수 호출 및 데이터 가져오기
+top_crypto_data = fetch_crypto_data()
+
 # 게시글 제목과 내용 입력
-title = (date_string + " 블록체인, 크립토, 비트코인 뉴스")
-content = weather_info + crypto_news
+title = (date_string + "날씨정보 블록체인 뉴스")
+content = crypto_news + top_crypto_data + weather_info
 
 time.sleep(1)  # 페이지 로딩 대기
 browser.find_element(By.CLASS_NAME, 'wp-block').send_keys(title) 
